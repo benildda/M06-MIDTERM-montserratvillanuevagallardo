@@ -33,7 +33,11 @@ document.querySelector('#app').innerHTML = `
 >
 <button id="start-game" type="button">Empezar partida</button>
 <p id="card-error"></p>
+<p id="game-timer">Tiempo: 0 segundos</p>
 <div id='game-board'></div>
+<!-- 36. Mostrar el ranking de partidas -->
+<h3>Ranking de jugadores</h3>
+<ol id="ranking-list"></ol>
   <button id="logout-button" type="button">Cerrar sesión</button>
 </section>
 
@@ -63,6 +67,7 @@ formulario.addEventListener('submit', function (event) {
   }
 
   mensajePokemonError.textContent = '';
+
   // 12. Guardar el perfil del jugador en sessionStorage
   const perfilJugador = {
     nombre: nombre,
@@ -76,6 +81,9 @@ formulario.addEventListener('submit', function (event) {
 // 3. Preparar las variables
 let listaPokemon = [];
 let pokemonSeleccionado = null;
+
+// 37. Recuperar el ranking guardado en localStorage
+let ranking = JSON.parse(localStorage.getItem('rankingPokeMemory')) || [];
 
 // 4. Obtener la lista de Pokémon desde PokeAPI
 fetch(`https://pokeapi.co/api/v2/pokemon?limit=2000`)
@@ -175,6 +183,37 @@ if (perfilGuardado !== null) {
   mostrarPantallaJuego(perfil);
 }
 
+// 40. Mostrar los resultados guardados en el ranking
+function mostrarRanking() {
+  const listaRanking = document.querySelector('#ranking-list');
+
+  listaRanking.innerHTML = '';
+
+  // 43. Ordenar el ranking por número de cartas y tiempo
+  ranking.sort(function (a, b) {
+    if (a.cartas !== b.cartas) {
+      return b.cartas - a.cartas;
+    }
+
+    return a.tiempo - b.tiempo;
+  });
+
+
+  ranking.forEach(function (resultado) {
+    const elemento = document.createElement('li');
+
+    elemento.textContent =
+      resultado.nombre + ' - ' +
+      resultado.cartas + ' cartas - ' +
+      resultado.tiempo + ' segundos';
+
+    listaRanking.appendChild(elemento);
+  });
+}
+
+// 41. Mostrar el ranking al cargar la página
+mostrarRanking();
+
 // 15. Mostrar la pantalla del juego
 function mostrarPantallaJuego(perfil) {
   document.querySelector('#profile-form').hidden = true;
@@ -195,6 +234,10 @@ botonCerrarSesion.addEventListener('click', function () {
 // 17. Validar el número de cartas
 const botonEmpezar = document.querySelector('#start-game');
 
+// 33. Preparar la variable para controlar el temporizador
+let temporizador = null;
+
+
 botonEmpezar.addEventListener('click', function () {
   const inputCartas = document.querySelector('#card-count');
   const numeroCartas = Number(inputCartas.value);
@@ -213,6 +256,24 @@ botonEmpezar.addEventListener('click', function () {
 
   mensajeError.textContent = '';
   console.log('Número válido:', numeroCartas);
+
+  // 34. Detener el temporizador anterior antes de empezar otra partida
+  clearInterval(temporizador);
+
+  // 22. Iniciar el temporizador de la partida
+  let segundos = 0;
+
+  // 35. Reiniciar el tiempo que aparece en pantalla
+  document.querySelector('#game-timer').textContent = 'Tiempo: 0 segundos';
+
+
+  temporizador = setInterval(function () {
+    segundos++;
+
+    // 23. Mostrar los segundos transcurridos en pantalla
+    document.querySelector('#game-timer').textContent =
+      'Tiempo: ' + segundos + ' segundos';
+  }, 1000);
 
   // 18. Calcular el número de parejas
   const numeroParejas = numeroCartas / 2;
@@ -250,18 +311,77 @@ botonEmpezar.addEventListener('click', function () {
 
   console.log('Cartas mezcladas:', cartasMezcladas);
 
+  // 24. Preparar y limpiar el tablero para una nueva partida
   const tablero = document.querySelector('#game-board');
   tablero.innerHTML = '';
+
+  // 25. Guardar las cartas descubiertas y contar las parejas encontradas
   const cartasGiradas = [];
+  let parejasEncontradas = 0;
+
+  // 26. Crear un botón por cada carta del tablero
   cartasMezcladas.forEach(function (pokemon) {
 
     const carta = document.createElement('button');
     carta.textContent = '?';
     tablero.appendChild(carta);
 
+    // 27. Descubrir una carta al pulsarla
     carta.addEventListener('click', function () {
+
+      // 28. Evitar descubrir más de dos cartas o repetir una carta descubierta
+      if (cartasGiradas.length === 2 || carta.textContent !== '?') {
+        return;
+      }
+
       carta.textContent = pokemon.name;
       cartasGiradas.push({ carta: carta, pokemon: pokemon });
+
+      // 29. Comparar los Pokémon cuando hay dos cartas descubiertas
+      if (cartasGiradas.length === 2) {
+
+        if (cartasGiradas[0].pokemon.name === cartasGiradas[1].pokemon.name) {
+
+          // 30. Mantener descubiertas las parejas correctas y aumentar el contador
+          console.log('¡Pareja encontrada!');
+          parejasEncontradas++;
+          console.log('Parejas encontradas:', parejasEncontradas);
+
+          // 31. Comprobar si se han encontrado todas las parejas y detener el tiempo
+          if (parejasEncontradas === numeroParejas) {
+            clearInterval(temporizador);
+            // 38. Preparar el resultado de la partida
+            const resultado = {
+              nombre: document.querySelector('#player-name').textContent,
+              cartas: numeroCartas,
+              tiempo: segundos
+            };
+            // 39. Guardar el resultado en localStorage
+            ranking.push(resultado);
+            localStorage.setItem('rankingPokeMemory', JSON.stringify(ranking));
+            // 42. Actualizar el ranking después de ganar
+            mostrarRanking();
+            alert('¡Enhorabuena! Has ganado la partida');
+          }
+
+          cartasGiradas[0].carta.disabled = true;
+          cartasGiradas[1].carta.disabled = true;
+
+          cartasGiradas.splice(0, 2);
+
+        } else {
+
+          // 32. Ocultar las cartas diferentes después de un segundo
+          console.log('Las cartas son diferentes');
+          setTimeout(function () {
+            cartasGiradas[0].carta.textContent = '?';
+            cartasGiradas[1].carta.textContent = '?';
+
+            cartasGiradas.splice(0, 2);
+          }, 1000);
+        }
+      }
+
       console.log('Cartas giradas:', cartasGiradas);
       console.log(pokemon.name);
     });
