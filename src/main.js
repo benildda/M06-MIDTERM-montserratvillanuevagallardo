@@ -33,11 +33,23 @@ document.querySelector('#app').innerHTML = `
 >
 <button id="start-game" type="button">Empezar partida</button>
 <p id="card-error"></p>
-<p id="game-timer">Tiempo: 0 segundos</p>
+<p id="game-timer">Tiempo: 0m 0s</p>
 <div id='game-board'></div>
 <!-- 36. Mostrar el ranking de partidas -->
+<!-- 55. Crear la tabla del ranking -->
 <h3>Ranking de jugadores</h3>
-<ol id="ranking-list"></ol>
+<table>
+  <thead>
+    <tr>
+      <th>Posición</th>
+      <th>Jugador</th>
+      <th>Pokémon</th>
+      <th>Tiempo</th>
+      <th>Cartas</th>
+    </tr>
+  </thead>
+  <tbody id="ranking-list"></tbody>
+</table>
   <button id="logout-button" type="button">Cerrar sesión</button>
 </section>
 
@@ -188,7 +200,19 @@ function mostrarRanking() {
   const listaRanking = document.querySelector('#ranking-list');
 
   listaRanking.innerHTML = '';
+  // 62. Mostrar un mensaje si todavía no hay resultados
+  if (ranking.length === 0) {
+    const fila = document.createElement('tr');
+    const celda = document.createElement('td');
 
+    celda.textContent = 'Todavía no hay partidas registradas';
+    celda.colSpan = 5;
+
+    fila.appendChild(celda);
+    listaRanking.appendChild(fila);
+
+    return;
+  }
   // 43. Ordenar el ranking por número de cartas y tiempo
   ranking.sort(function (a, b) {
     if (a.cartas !== b.cartas) {
@@ -199,15 +223,38 @@ function mostrarRanking() {
   });
 
 
-  ranking.forEach(function (resultado) {
-    const elemento = document.createElement('li');
+  // 56. Crear una fila por cada resultado del ranking
+  ranking.forEach(function (resultado, indice) {
 
-    elemento.textContent =
-      resultado.nombre + ' - ' +
-      resultado.cartas + ' cartas - ' +
-      resultado.tiempo + ' segundos';
+    const fila = document.createElement('tr');
 
-    listaRanking.appendChild(elemento);
+    // 57. Crear la celda de posición
+    const celdaPosicion = document.createElement('td');
+    celdaPosicion.textContent = indice + 1;
+    fila.appendChild(celdaPosicion);
+
+    // 58. Crear la celda del jugador
+    const celdaJugador = document.createElement('td');
+    celdaJugador.textContent = resultado.nombre;
+    fila.appendChild(celdaJugador);
+
+    // 59. Crear la celda del Pokémon favorito
+    const celdaPokemon = document.createElement('td');
+    celdaPokemon.textContent = resultado.pokemon || 'Sin dato';
+    fila.appendChild(celdaPokemon);
+
+    // 60. Crear la celda del tiempo
+    const celdaTiempo = document.createElement('td');
+    celdaTiempo.textContent = resultado.tiempo + ' segundos';
+    fila.appendChild(celdaTiempo);
+
+    // 61. Crear la celda del número de cartas
+    const celdaCartas = document.createElement('td');
+    celdaCartas.textContent = resultado.cartas;
+    fila.appendChild(celdaCartas);
+
+
+    listaRanking.appendChild(fila);
   });
 }
 
@@ -230,6 +277,7 @@ botonCerrarSesion.addEventListener('click', function () {
   sessionStorage.removeItem('perfilJugador');
   location.reload();
 });
+
 
 // 17. Validar el número de cartas
 const botonEmpezar = document.querySelector('#start-game');
@@ -264,15 +312,19 @@ botonEmpezar.addEventListener('click', function () {
   let segundos = 0;
 
   // 35. Reiniciar el tiempo que aparece en pantalla
-  document.querySelector('#game-timer').textContent = 'Tiempo: 0 segundos';
+  document.querySelector('#game-timer').textContent = 'Tiempo: 0m 0s';
 
 
   temporizador = setInterval(function () {
     segundos++;
 
-    // 23. Mostrar los segundos transcurridos en pantalla
+    // 50. Calcular los minutos y segundos transcurridos
+    const minutos = Math.floor(segundos / 60);
+    const segundosRestantes = segundos % 60;
+
+    // 51. Mostrar el tiempo con el formato solicitado
     document.querySelector('#game-timer').textContent =
-      'Tiempo: ' + segundos + ' segundos';
+      'Tiempo: ' + minutos + 'm ' + segundosRestantes + 's';
   }, 1000);
 
   // 18. Calcular el número de parejas
@@ -323,18 +375,42 @@ botonEmpezar.addEventListener('click', function () {
   cartasMezcladas.forEach(function (pokemon) {
 
     const carta = document.createElement('button');
-    carta.textContent = '?';
+
+    // 47. Crear el símbolo de la carta oculta
+    const reverso = document.createElement('span');
+    reverso.textContent = '?';
+    carta.appendChild(reverso);
+
+    // 46. Crear la imagen del Pokémon y mantenerla oculta
+    const imagenCarta = document.createElement('img');
+
+    // 44. Obtener la imagen del Pokémon mediante PokeAPI
+    fetch(pokemon.url)
+      .then(function (respuesta) {
+        return respuesta.json();
+      })
+      .then(function (datos) {
+        imagenCarta.src = datos.sprites.front_default;
+      });
+    imagenCarta.alt = pokemon.name;
+    imagenCarta.hidden = true;
+
+    carta.appendChild(imagenCarta);
+
     tablero.appendChild(carta);
 
     // 27. Descubrir una carta al pulsarla
     carta.addEventListener('click', function () {
 
       // 28. Evitar descubrir más de dos cartas o repetir una carta descubierta
-      if (cartasGiradas.length === 2 || carta.textContent !== '?') {
+      if (cartasGiradas.length === 2 || reverso.hidden) {
         return;
       }
 
-      carta.textContent = pokemon.name;
+      // 48. Ocultar el reverso y mostrar la imagen del Pokémon
+      reverso.hidden = true;
+      imagenCarta.hidden = false;
+
       cartasGiradas.push({ carta: carta, pokemon: pokemon });
 
       // 29. Comparar los Pokémon cuando hay dos cartas descubiertas
@@ -350,9 +426,15 @@ botonEmpezar.addEventListener('click', function () {
           // 31. Comprobar si se han encontrado todas las parejas y detener el tiempo
           if (parejasEncontradas === numeroParejas) {
             clearInterval(temporizador);
+
+            // 52. Recuperar el Pokémon favorito del jugador
+            const perfil = JSON.parse(sessionStorage.getItem('perfilJugador'));
+
             // 38. Preparar el resultado de la partida
             const resultado = {
+              id: Date.now(),
               nombre: document.querySelector('#player-name').textContent,
+              pokemon: perfil.pokemon.nombre,
               cartas: numeroCartas,
               tiempo: segundos
             };
@@ -374,8 +456,13 @@ botonEmpezar.addEventListener('click', function () {
           // 32. Ocultar las cartas diferentes después de un segundo
           console.log('Las cartas son diferentes');
           setTimeout(function () {
-            cartasGiradas[0].carta.textContent = '?';
-            cartasGiradas[1].carta.textContent = '?';
+
+            // 49. Volver a ocultar las imágenes de las cartas diferentes
+            cartasGiradas[0].carta.querySelector('img').hidden = true;
+            cartasGiradas[1].carta.querySelector('img').hidden = true;
+
+            cartasGiradas[0].carta.querySelector('span').hidden = false;
+            cartasGiradas[1].carta.querySelector('span').hidden = false;
 
             cartasGiradas.splice(0, 2);
           }, 1000);
