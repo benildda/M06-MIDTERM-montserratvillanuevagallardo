@@ -294,3 +294,9 @@ code {
     border-right-color: var(--border);
   }
 }
+/* 66. Destacar la última partida */
+.ultima-partida {
+  background-color: #fff3b0;
+  color: #222;
+  font-weight: bold;
+}
