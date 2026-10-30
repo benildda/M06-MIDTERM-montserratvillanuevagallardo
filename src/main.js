@@ -239,14 +239,33 @@ botonEmpezar.addEventListener('click', function () {
   console.log('Cartas de la partida:', cartas);
 
 
-// 21. Mezclar las cartas
-const cartasMezcladas = [];
+  // 21. Mezclar las cartas
+  const cartasMezcladas = [];
 
-while (cartas.length > 0) {
-  const indiceAleatorio = Math.floor(Math.random() * cartas.length);
-  const cartaExtraida = cartas.splice(indiceAleatorio, 1);
-  cartasMezcladas.push(cartaExtraida[0]);
-}
+  while (cartas.length > 0) {
+    const indiceAleatorio = Math.floor(Math.random() * cartas.length);
+    const cartaExtraida = cartas.splice(indiceAleatorio, 1);
+    cartasMezcladas.push(cartaExtraida[0]);
+  }
 
-console.log('Cartas mezcladas:', cartasMezcladas);
+  console.log('Cartas mezcladas:', cartasMezcladas);
+
+  const tablero = document.querySelector('#game-board');
+  tablero.innerHTML = '';
+  const cartasGiradas = [];
+  cartasMezcladas.forEach(function (pokemon) {
+
+    const carta = document.createElement('button');
+    carta.textContent = '?';
+    tablero.appendChild(carta);
+
+    carta.addEventListener('click', function () {
+      carta.textContent = pokemon.name;
+      cartasGiradas.push({ carta: carta, pokemon: pokemon });
+      console.log('Cartas giradas:', cartasGiradas);
+      console.log(pokemon.name);
+    });
+
+  });
+
 });
